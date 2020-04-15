@@ -34,27 +34,31 @@ namespace ImageGallery.API
 
             services.AddHttpContextAccessor();
 
-            services.AddScoped<IAuthorizationHandler, MustOwnImageHandler>();
+            services.AddScoped<IAuthorizationHandler, MustOwnImageHandler>(); // Our Custom handler for our custom policy.
 
             services.AddAuthorization(authorizationOptions =>
             {
+                // Add a new custom Policy using MS' Auth Libraries.
                 authorizationOptions.AddPolicy(
                     "MustOwnImage",
                     policyBuilder =>
                     {
                         policyBuilder.RequireAuthenticatedUser();
                         policyBuilder.AddRequirements(
-                              new MustOwnImageRequirement());
+                              new MustOwnImageRequirement()); // Our Custom Requirement.
                     });
             });
 
+            // Let's chose IdentityServer as our Authentication mechanism to use in this app:
             services.AddAuthentication(IdentityServerAuthenticationDefaults.AuthenticationScheme)
                 .AddIdentityServerAuthentication(options =>
                 {
-                    options.Authority = "https://localhost:44318";
+                    options.Authority = "http://localhost:44318";
                     options.ApiName = "imagegalleryapi";
-                    options.ApiSecret = "apisecret";
-                });
+                    options.ApiSecret = "apisecret"; // Secret shared between client and IDP for validating Access tokens via a Reference / Token Introspection Endpoint.
+                    // Do not require HTTPS
+                    options.RequireHttpsMetadata = false;
+                }); 
 
             // register the DbContext on the container, getting the connection string from
             // appSettings (note: use this during development; in a production environment,
@@ -93,10 +97,11 @@ namespace ImageGallery.API
                 });
                 // The default HSTS value is 30 days. You may want to change this for 
                 // production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
+                // Disable in attempt to run using HTTP.
+                // app.UseHsts();
             }
-
-            app.UseHttpsRedirection();
+            // Disable in attempt to run using HTTP.
+            // app.UseHttpsRedirection();
 
             app.UseStaticFiles();
 

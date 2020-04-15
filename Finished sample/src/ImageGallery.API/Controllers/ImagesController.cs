@@ -36,6 +36,7 @@ namespace ImageGallery.API.Controllers
         [HttpGet()]
         public IActionResult GetImages()
         {
+            // Use subject (user) from Access Token to find and return the images owned by that subject.
             var ownerId = User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
             
             // get from repo
@@ -49,7 +50,7 @@ namespace ImageGallery.API.Controllers
         }
 
         [HttpGet("{id}", Name = "GetImage")]
-        [Authorize("MustOwnImage")]
+        [Authorize("MustOwnImage")] // By default, the text is a Policy.
         public IActionResult GetImage(Guid id)
         {          
             var imageFromRepo = _galleryRepository.GetImage(id);

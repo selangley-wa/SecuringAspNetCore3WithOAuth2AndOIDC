@@ -31,16 +31,16 @@ namespace Marvin.IDP
                 "Server=(localdb)\\mssqllocaldb;Database=MarvinIDPDataDB;Trusted_Connection=True;";
 
             // uncomment, if you want to add an MVC-based UI
+            // i.e., the content of the QuickStart and Views folders.
             services.AddControllersWithViews();
 
             var builder = services.AddIdentityServer()
-                //.AddInMemoryIdentityResources(Config.Ids)
-                //.AddInMemoryApiResources(Config.Apis)
-                //.AddInMemoryClients(Config.Clients)
-                .AddTestUsers(TestUsers.Users);
-
+                .AddInMemoryIdentityResources(Config.Ids)
+                .AddInMemoryApiResources(Config.Apis) // Our Client App's API resources
+                .AddInMemoryClients(Config.Clients).AddTestUsers(TestUsers.Users)
             // not recommended for production - you need to store your key material somewhere secure
-            //builder.AddDeveloperSigningCredential();
+               .AddDeveloperSigningCredential();
+            /*
             builder.AddSigningCredential(LoadCertificateFromStore());
 
             var migrationsAssembly = typeof(Startup)
@@ -59,6 +59,7 @@ namespace Marvin.IDP
                     builder.UseSqlServer(marvinIDPDataDBConnectionString,
                     options => options.MigrationsAssembly(migrationsAssembly));
             });
+            */
         }
 
         public void Configure(IApplicationBuilder app)
@@ -68,16 +69,19 @@ namespace Marvin.IDP
                 app.UseDeveloperExceptionPage();
             }
 
-            InitializeDatabase(app);
+            //  InitializeDatabase(app);
 
             // uncomment if you want to add MVC
+            // Static files are required for "endpoint assets"
             app.UseStaticFiles();
             app.UseRouting();
 
+            // Add "IdentityServer" to the request pipeline.
             app.UseIdentityServer();
 
             // uncomment, if you want to add MVC
             app.UseAuthorization();
+            // Routes actions to the correct controllers.
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapDefaultControllerRoute();

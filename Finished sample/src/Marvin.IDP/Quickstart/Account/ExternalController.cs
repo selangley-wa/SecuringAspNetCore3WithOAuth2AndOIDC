@@ -62,7 +62,8 @@ namespace Marvin.IDP
             if (AccountOptions.WindowsAuthenticationSchemeName == provider)
             {
                 // windows authentication needs special handling
-                return await ProcessWindowsLoginAsync(returnUrl);
+                // return await ProcessWindowsLoginAsync(returnUrl);
+                return null;
             }
             else
             {
@@ -144,7 +145,7 @@ namespace Marvin.IDP
 
             return Redirect(returnUrl);
         }
-
+/*
         private async Task<IActionResult> ProcessWindowsLoginAsync(string returnUrl)
         {
             // see if windows auth has already been requested and succeeded
@@ -191,7 +192,7 @@ namespace Marvin.IDP
                 return Challenge(AccountOptions.WindowsAuthenticationSchemeName);
             }
         }
-
+*/
         private (TestUser user, string provider, string providerUserId, IEnumerable<Claim> claims) FindUserFromExternalProvider(AuthenticateResult result)
         {
             var externalUser = result.Principal;

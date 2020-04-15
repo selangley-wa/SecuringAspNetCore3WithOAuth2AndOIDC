@@ -1,4 +1,4 @@
-﻿using IdentityModel.Client;
+﻿using IdentityModel.Client;  // TODO: How do I know this gets injected into and used by this class?
 using ImageGallery.Client.ViewModels;
 using ImageGallery.Model;
 using Microsoft.AspNetCore.Authentication;
@@ -17,8 +17,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ImageGallery.Client.Controllers
-{ 
-    [Authorize]
+{
+    [Authorize] // From MS's Authentication Libraries
     public class GalleryController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -138,7 +138,7 @@ namespace ImageGallery.Client.Controllers
             return RedirectToAction("Index");
         }
 
-        [Authorize(Roles = "PayingUser")]
+        [Authorize(Roles = "PayingUser")] // Require this role in order to access the view for adding an image.
         public IActionResult AddImage()
         {
             return View();
@@ -146,7 +146,7 @@ namespace ImageGallery.Client.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "PayingUser")]
+        [Authorize(Roles = "PayingUser")] // Require this role in order to access this API.
         public async Task<IActionResult> AddImage(AddImageViewModel addImageViewModel)
         {
             if (!ModelState.IsValid)
@@ -203,6 +203,7 @@ namespace ImageGallery.Client.Controllers
                 throw new Exception(discoveryDocumentResponse.Error);
             }
 
+            // Since user has logged out, tell IDP that it should revoke the user's access tokens for this app.
             var accessTokenRevocationResponse = await client.RevokeTokenAsync(
                 new TokenRevocationRequest
                 {
@@ -216,7 +217,7 @@ namespace ImageGallery.Client.Controllers
             {
                 throw new Exception(accessTokenRevocationResponse.Error);
             }
-
+            // Also, tell the IDP to revoke the user's refresh tokens.
             var refreshTokenRevocationResponse = await client.RevokeTokenAsync(
                 new TokenRevocationRequest
                 {
@@ -230,8 +231,9 @@ namespace ImageGallery.Client.Controllers
             {
                 throw new Exception(accessTokenRevocationResponse.Error);
             }
-
+            // Sign-out of our application ... clearing out the specified values from our session cookie.
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            // Sign-out of our IDP. Clear out the IDP data from our cookie.
             await HttpContext.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme);
         }
 
@@ -240,6 +242,8 @@ namespace ImageGallery.Client.Controllers
         {
             var idpClient = _httpClientFactory.CreateClient("IDPClient");
 
+            // Ask the IDP for its Metadata (Discovery Document) we can 
+            // make calls out to the IDP.
             var metaDataResponse = await idpClient.GetDiscoveryDocumentAsync();
 
             if (metaDataResponse.IsError)
@@ -248,10 +252,10 @@ namespace ImageGallery.Client.Controllers
                     "Problem accessing the discovery endpoint."
                     , metaDataResponse.Exception);
             }
-
+            // Go get an Access Token
             var accessToken = await HttpContext
               .GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
-
+            // Go get some user claims like the user's Address, using the Access Token.
             var userInfoResponse = await idpClient.GetUserInfoAsync(
                new UserInfoRequest
                {
@@ -272,6 +276,8 @@ namespace ImageGallery.Client.Controllers
             return View(new OrderFrameViewModel(address));
         }
 
+        
+        /** Debug logging statements for Identity and Authorization. */
         public async Task WriteOutIdentityInformation()
         {
             // get the saved identity token

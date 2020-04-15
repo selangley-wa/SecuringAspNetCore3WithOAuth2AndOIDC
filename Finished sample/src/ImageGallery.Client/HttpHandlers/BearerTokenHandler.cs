@@ -13,6 +13,14 @@ using System.Threading.Tasks;
 
 namespace ImageGallery.Client.HttpHandlers
 {
+    /**
+     * An alternative to managing our Ac
+
+     *   https://identitymodel.readthedocs.io/en/latest/aspnetcore/web.html
+     *   services.AddAccessTokenManagement();
+     *
+     * or various versions of the above, in the Startup.cs
+     */
     public class BearerTokenHandler : DelegatingHandler
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -23,6 +31,7 @@ namespace ImageGallery.Client.HttpHandlers
         {
             _httpContextAccessor = httpContextAccessor ??
                 throw new ArgumentNullException(nameof(httpContextAccessor));
+            // Inject the Client Factory that we will use for refreshing our Access Tokens.
             _httpClientFactory = httpClientFactory ??
                  throw new ArgumentNullException(nameof(httpClientFactory));
         }
@@ -36,12 +45,16 @@ namespace ImageGallery.Client.HttpHandlers
 
             if (!string.IsNullOrWhiteSpace(accessToken))
             {
+                // Use the IdentityServer4 Client Library method
                 request.SetBearerToken(accessToken);
             }
 
             return await base.SendAsync(request, cancellationToken);
         }
 
+        /**
+         * Make sure we have a non-expired Access Token.
+         */
         public async Task<string> GetAccessTokenAsync()
         {
             // get the expires_at value & parse it
@@ -58,14 +71,20 @@ namespace ImageGallery.Client.HttpHandlers
                        .HttpContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
             }
 
+            // ELSE, let's go Refresh our Access Token as we are near or past the expiration time.
+            // First create an HTTP Client.
             var idpClient = _httpClientFactory.CreateClient("IDPClient");
 
             // get the discovery document
             var discoveryReponse = await idpClient.GetDiscoveryDocumentAsync();
 
             // refresh the tokens
+            // Get the refresh token the IDP gave us earlier.
             var refreshToken = await _httpContextAccessor
                        .HttpContext.GetTokenAsync(OpenIdConnectParameterNames.RefreshToken);
+            // TODO
+            // Newer version of MS library returns blank refresh token.
+            // What's the workaround for this?
 
             var refreshResponse = await idpClient.RequestRefreshTokenAsync(
                 new RefreshTokenRequest
@@ -76,7 +95,7 @@ namespace ImageGallery.Client.HttpHandlers
                     RefreshToken = refreshToken
                 });
 
-            // store the tokens             
+            // store the tokens from the Refresh response.            
             var updatedTokens = new List<AuthenticationToken>();
             updatedTokens.Add(new AuthenticationToken
             {
@@ -97,7 +116,7 @@ namespace ImageGallery.Client.HttpHandlers
             {
                 Name = "expires_at",
                 Value = (DateTime.UtcNow + TimeSpan.FromSeconds(refreshResponse.ExpiresIn)).
-                        ToString("o", CultureInfo.InvariantCulture)
+                        ToString("o", CultureInfo.InvariantCulture) // Format of how time is stored.
             });
 
             // get authenticate result, containing the current principal & 
@@ -105,15 +124,17 @@ namespace ImageGallery.Client.HttpHandlers
             var currentAuthenticateResult = await _httpContextAccessor
                 .HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-            // store the updated tokens
+            // store the updated tokens in the cookie.
             currentAuthenticateResult.Properties.StoreTokens(updatedTokens);
 
-            // sign in
+            // sign in .. really puts the values into the cookie ... so we can retrieve them from 
+            // other places in our code to use them.
+            // This is Microsoft's recommendation for "Session Management".
             await _httpContextAccessor.HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 currentAuthenticateResult.Principal,
                 currentAuthenticateResult.Properties);
-
+            // Finally, return the valid access token.
             return refreshResponse.AccessToken;
         }
     }

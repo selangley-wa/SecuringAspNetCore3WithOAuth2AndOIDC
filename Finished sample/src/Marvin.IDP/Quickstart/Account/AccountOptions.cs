@@ -13,6 +13,8 @@ namespace Marvin.IDP
         public static TimeSpan RememberMeLoginDuration = TimeSpan.FromDays(30);
 
         public static bool ShowLogoutPrompt = true;
+
+        // Automatically redirect client user to the logout url for the client application after sign out.
         public static bool AutomaticRedirectAfterSignOut = true;
 
         // specify the Windows authentication scheme being used

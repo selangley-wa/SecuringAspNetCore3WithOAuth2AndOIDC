@@ -28,18 +28,20 @@ namespace ImageGallery.API.Authorization
             AuthorizationHandlerContext context,
             MustOwnImageRequirement requirement)
         {
+            // Can we find the specified image?
             var imageId = _httpContextAccessor.HttpContext.GetRouteValue("id").ToString();
             if (!Guid.TryParse(imageId, out Guid imageIdAsGuid))
             {
-                context.Fail();
+                context.Fail(); // Cause the Requirement to fail.
                 return Task.CompletedTask;
             }
 
+            // Is the image owned by the user?
             var ownerId = context.User.Claims.FirstOrDefault(c => c.Type == "sub").Value;
 
             if (!_galleryRepository.IsImageOwner(imageIdAsGuid, ownerId))
             {
-                context.Fail();
+                context.Fail(); 
                 return Task.CompletedTask;
             }
 
